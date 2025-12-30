@@ -310,12 +310,32 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // 页面加载时自动同步一次
+  // 页面加载时仅在当前会话首次进入时自动同步一次
   useEffect(() => {
     let active = true;
-    doSync(false, false).finally(() => {
-      if (active) setReady(true);
-    });
+    const autoSyncKey = "cli_dashboard_auto_sync_done";
+    const hasSyncedThisSession = typeof window !== "undefined" ? window.sessionStorage.getItem(autoSyncKey) : null;
+
+    if (hasSyncedThisSession) {
+      setReady(true);
+      return () => {
+        active = false;
+      };
+    }
+
+    const run = async () => {
+      try {
+        await doSync(false, false);
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(autoSyncKey, "1");
+        }
+      } finally {
+        if (active) setReady(true);
+      }
+    };
+
+    run();
+
     return () => {
       active = false;
     };
