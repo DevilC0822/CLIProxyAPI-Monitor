@@ -91,12 +91,13 @@ async function performSync(request: Request) {
     return NextResponse.json({ status: "ok", inserted: 0, message: "No usage data" });
   }
 
-  let result;
+  let insertedRows: Array<{ id: number }>;
   try {
-    result = await db
+    insertedRows = await db
       .insert(usageRecords)
       .values(rows)
-      .onConflictDoNothing({ target: [usageRecords.occurredAt, usageRecords.route, usageRecords.model] });
+      .onConflictDoNothing({ target: [usageRecords.occurredAt, usageRecords.route, usageRecords.model] })
+      .returning({ id: usageRecords.id });
   } catch (dbError) {
     return NextResponse.json(
       { error: "Database insert failed", detail: (dbError as Error).message },
@@ -104,7 +105,7 @@ async function performSync(request: Request) {
     );
   }
 
-  return NextResponse.json({ status: "ok", inserted: rows.length, db: result });
+  return NextResponse.json({ status: "ok", inserted: insertedRows.length, attempted: rows.length });
 }
 
 export async function POST(request: Request) {
