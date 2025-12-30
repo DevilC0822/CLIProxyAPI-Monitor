@@ -29,7 +29,8 @@ export async function GET() {
     const data = await res.json();
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    console.error("/api/usage-statistics-enabled GET failed:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ "usage-statistics-enabled": value }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    console.error("/api/usage-statistics-enabled POST failed:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

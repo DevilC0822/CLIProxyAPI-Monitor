@@ -79,8 +79,9 @@ async function performSync(request: Request) {
     const json = await response.json();
     payload = parseUsagePayload(json);
   } catch (parseError) {
+    console.error("/api/sync parse upstream usage failed:", parseError);
     return NextResponse.json(
-      { error: "Failed to parse usage response", detail: (parseError as Error).message },
+      { error: "Bad Gateway" },
       { status: 502 }
     );
   }
@@ -99,8 +100,9 @@ async function performSync(request: Request) {
       .onConflictDoNothing({ target: [usageRecords.occurredAt, usageRecords.route, usageRecords.model] })
       .returning({ id: usageRecords.id });
   } catch (dbError) {
+    console.error("/api/sync database insert failed:", dbError);
     return NextResponse.json(
-      { error: "Database insert failed", detail: (dbError as Error).message },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }

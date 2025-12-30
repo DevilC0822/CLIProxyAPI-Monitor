@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   cleanupExpired();
 
   if (!PASSWORD) {
-    return NextResponse.json({ error: "No password configured" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 
   const clientIP = getClientIP(request);
