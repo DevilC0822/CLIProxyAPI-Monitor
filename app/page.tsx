@@ -118,6 +118,9 @@ export default function DashboardPage() {
   const [page, setPage] = useState(1);
   const [form, setForm] = useState<PriceForm>({ model: "", inputPricePer1M: "", cachedInputPricePer1M: "", outputPricePer1M: "" });
   const [status, setStatus] = useState<string | null>(null);
+  const statusTimerRef = useRef<number | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const saveStatusTimerRef = useRef<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
@@ -483,7 +486,14 @@ export default function DashboardPage() {
     };
 
     if (!payload.model || Number.isNaN(payload.inputPricePer1M) || Number.isNaN(payload.outputPricePer1M)) {
+      if (statusTimerRef.current !== null) {
+        clearTimeout(statusTimerRef.current);
+      }
       setStatus("请输入有效的模型名称和单价");
+      statusTimerRef.current = window.setTimeout(() => {
+        setStatus(null);
+        statusTimerRef.current = null;
+      }, 10000);
       setSaving(false);
       return;
     }
@@ -495,19 +505,51 @@ export default function DashboardPage() {
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
+        if (statusTimerRef.current !== null) {
+          clearTimeout(statusTimerRef.current);
+        }
         setStatus("保存失败，请检查后端日志/环境变量");
+        statusTimerRef.current = window.setTimeout(() => {
+          setStatus(null);
+          statusTimerRef.current = null;
+        }, 10000);
       } else {
         setPrices((prev: ModelPrice[]) => {
           const others = prev.filter((p) => p.model !== payload.model);
           return [...others, payload].sort((a, b) => a.model.localeCompare(b.model));
         });
         setForm({ model: "", inputPricePer1M: "", cachedInputPricePer1M: "", outputPricePer1M: "" });
+        if (statusTimerRef.current !== null) {
+          clearTimeout(statusTimerRef.current);
+        }
         setStatus("已保存");
+        statusTimerRef.current = window.setTimeout(() => {
+          setStatus(null);
+          statusTimerRef.current = null;
+        }, 10000);
+        
+        // 显示保存成功提示
+        if (saveStatusTimerRef.current !== null) {
+          clearTimeout(saveStatusTimerRef.current);
+        }
+        setSaveStatus(`已保存价格：${payload.model}`);
+        saveStatusTimerRef.current = window.setTimeout(() => {
+          setSaveStatus(null);
+          saveStatusTimerRef.current = null;
+        }, 10000);
+        
         // 刷新 overview 数据以更新费用计算
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (err) {
+      if (statusTimerRef.current !== null) {
+        clearTimeout(statusTimerRef.current);
+      }
       setStatus("请求失败，请稍后重试");
+      statusTimerRef.current = window.setTimeout(() => {
+        setStatus(null);
+        statusTimerRef.current = null;
+      }, 10000);
     } finally {
       setSaving(false);
     }
@@ -557,6 +599,15 @@ export default function DashboardPage() {
       outputPricePer1M: Number(editForm.outputPricePer1M)
     };
     try {
+      // 如果模型名改变了，先删除旧模型
+      if (editingPrice.model !== payload.model) {
+        await fetch("/api/prices", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: editingPrice.model })
+        });
+      }
+      
       const res = await fetch("/api/prices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -631,6 +682,11 @@ export default function DashboardPage() {
             {syncStatus && (
               <span className={`text-xs ${syncStatus.includes("失败") ? "text-red-400" : "text-green-400"}`}>
                 {syncStatus}
+              </span>
+            )}
+            {saveStatus && (
+              <span className="text-xs text-green-400">
+                {saveStatus}
               </span>
             )}
           </div>
@@ -1305,7 +1361,11 @@ export default function DashboardPage() {
             <h2 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-slate-900"}`}>模型价格配置</h2>
             <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>设置每百万 tokens 单价，费用计算将立即更新</p>
           </div>
-          {status ? <p className="text-xs text-emerald-400">{status}</p> : null}
+          {status ? (
+            <p className={`text-xs ${status === "已保存" ? "text-emerald-400" : "text-red-400"}`}>
+              {status}
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-5">
@@ -1358,7 +1418,7 @@ export default function DashboardPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-lg bg-indigo-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-600 disabled:opacity-60"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {saving ? "保存中..." : "保存价格"}
@@ -1495,7 +1555,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={confirmDeletePrice}
-            className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
+            className="flex-1 rounded-lg border border-red-400 px-3 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-500/10"
           >
             确认删除
           </button>
