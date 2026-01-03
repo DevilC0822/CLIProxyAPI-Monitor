@@ -123,10 +123,7 @@ export default function DashboardPage() {
   const saveStatusTimerRef = useRef<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem("lastSyncStatus") || null;
-  });
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const syncStatusTimerRef = useRef<number | null>(null);
   const [syncStatusClosing, setSyncStatusClosing] = useState(false);
   const [saveStatusClosing, setSaveStatusClosing] = useState(false);
@@ -379,14 +376,21 @@ export default function DashboardPage() {
         }
       } else {
         const now = new Date();
-        const successMsg = `已同步 ${data.inserted ?? 0} 条记录`;
+        const inserted = data.inserted ?? 0;
         setLastSyncTime(now);
-        setSyncStatus(successMsg);
         if (typeof window !== "undefined") {
           window.localStorage.setItem("lastSyncTime", now.toISOString());
-          window.localStorage.setItem("lastSyncStatus", successMsg);
         }
-        if (triggerRefresh && (data.inserted ?? 0) > 0) setRefreshTrigger((prev) => prev + 1);
+        // 手动同步时总是显示消息，自动同步时仅在有数据时显示
+        const shouldShowMessage = showMessage || inserted > 0;
+        if (shouldShowMessage) {
+          const successMsg = `已同步 ${inserted} 条记录`;
+          setSyncStatus(successMsg);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("lastSyncStatus", successMsg);
+          }
+        }
+        if (triggerRefresh && inserted > 0) setRefreshTrigger((prev) => prev + 1);
       }
     } catch (err) {
       const errorMsg = `同步失败: ${(err as Error).message}`;
@@ -842,7 +846,7 @@ export default function DashboardPage() {
         ) : (
           <>
             {/* 请求数 */}
-            <div className={`rounded-2xl p-5 shadow-sm ring-1 ${darkMode ? "bg-slate-800/50 ring-slate-700" : "bg-white ring-slate-200"}`}>
+            <div className={`rounded-2xl p-5 shadow-sm ring-1 transition-all duration-200 ${darkMode ? "bg-slate-800/50 ring-slate-700 hover:shadow-lg hover:shadow-slate-700/30 hover:ring-slate-600" : "bg-white ring-slate-200 hover:shadow-lg hover:ring-slate-300"}`}>
               <div className={`text-sm uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>请求数</div>
               <div className={`mt-3 text-2xl font-semibold ${darkMode ? "text-white" : "text-slate-900"}`}>{formatNumberWithCommas(overviewData.totalRequests)}</div>
               <p className="mt-2 text-sm">
@@ -853,7 +857,7 @@ export default function DashboardPage() {
             </div>
             
             {/* Tokens - 占两列 */}
-            <div className={`col-span-2 rounded-2xl p-5 shadow-sm ring-1 ${darkMode ? "bg-slate-800/50 ring-slate-700" : "bg-white ring-slate-200"}`}>
+            <div className={`col-span-2 rounded-2xl p-5 shadow-sm ring-1 transition-all duration-200 ${darkMode ? "bg-slate-800/50 ring-slate-700 hover:shadow-lg hover:shadow-slate-700/30 hover:ring-slate-600" : "bg-white ring-slate-200 hover:shadow-lg hover:ring-slate-300"}`}>
               <div className="flex items-center justify-between">
                 <div className={`text-sm uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Tokens</div>
                 <div className={`text-2xl font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>
@@ -884,14 +888,14 @@ export default function DashboardPage() {
             </div>
             
             {/* 预估费用 */}
-            <div className={`rounded-2xl p-5 shadow-sm ring-1 ${darkMode ? "bg-gradient-to-br from-amber-500/20 to-amber-700/10 ring-amber-400/40" : "bg-amber-50 ring-amber-200"}`}>
+            <div className={`rounded-2xl p-5 shadow-sm ring-1 transition-all duration-200 ${darkMode ? "bg-gradient-to-br from-amber-500/20 to-amber-700/10 ring-amber-400/40 hover:shadow-lg hover:shadow-amber-500/20 hover:ring-amber-400/60" : "bg-amber-50 ring-amber-200 hover:shadow-lg hover:ring-amber-300"}`}>
               <div className="text-sm uppercase tracking-wide text-amber-400">预估费用</div>
               <div className={`mt-3 text-2xl font-semibold ${darkMode ? "text-white" : "text-slate-900"}`}>{formatCurrency(overviewData.totalCost)}</div>
               <p className={`mt-2 text-xs ${darkMode ? "text-amber-300/70" : "text-amber-700/70"}`}>基于模型价格</p>
             </div>
 
             {/* TPM */}
-            <div className={`rounded-2xl p-5 shadow-sm ring-1 ${darkMode ? "bg-gradient-to-br from-emerald-600/20 to-emerald-800/10 ring-emerald-500/30" : "bg-emerald-50 ring-emerald-200"}`}>
+            <div className={`rounded-2xl p-5 shadow-sm ring-1 transition-all duration-200 ${darkMode ? "bg-gradient-to-br from-emerald-600/20 to-emerald-800/10 ring-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/20 hover:ring-emerald-500/50" : "bg-emerald-50 ring-emerald-200 hover:shadow-lg hover:ring-emerald-300"}`}>
               <div className="text-sm uppercase tracking-wide text-emerald-400">平均 TPM</div>
               <div className={`mt-3 text-2xl font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>
                 {(overviewData.totalTokens / (rangeDays * 24 * 60)).toFixed(2)}
@@ -900,7 +904,7 @@ export default function DashboardPage() {
             </div>
 
             {/* RPM */}
-            <div className={`rounded-2xl p-5 shadow-sm ring-1 ${darkMode ? "bg-gradient-to-br from-blue-600/20 to-blue-800/10 ring-blue-500/30" : "bg-blue-50 ring-blue-200"}`}>
+            <div className={`rounded-2xl p-5 shadow-sm ring-1 transition-all duration-200 ${darkMode ? "bg-gradient-to-br from-blue-600/20 to-blue-800/10 ring-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20 hover:ring-blue-500/50" : "bg-blue-50 ring-blue-200 hover:shadow-lg hover:ring-blue-300"}`}>
               <div className="text-sm uppercase tracking-wide text-blue-400">平均 RPM</div>
               <div className={`mt-3 text-2xl font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>
                 {(overviewData.totalRequests / (rangeDays * 24 * 60)).toFixed(2)}
@@ -909,7 +913,7 @@ export default function DashboardPage() {
             </div>
 
             {/* 日均请求 */}
-            <div className={`rounded-2xl p-5 shadow-sm ring-1 ${darkMode ? "bg-gradient-to-br from-purple-600/20 to-purple-800/10 ring-purple-500/30" : "bg-purple-50 ring-purple-200"}`}>
+            <div className={`rounded-2xl p-5 shadow-sm ring-1 transition-all duration-200 ${darkMode ? "bg-gradient-to-br from-purple-600/20 to-purple-800/10 ring-purple-500/30 hover:shadow-lg hover:shadow-purple-500/20 hover:ring-purple-500/50" : "bg-purple-50 ring-purple-200 hover:shadow-lg hover:ring-purple-300"}`}>
               <div className="text-sm uppercase tracking-wide text-purple-400">日均请求 (RPD)</div>
               <div className={`mt-3 text-2xl font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>
                 {formatCompactNumber(Math.round(overviewData.totalRequests / rangeDays))}
@@ -2037,7 +2041,7 @@ export default function DashboardPage() {
 
 function StatCard({ label, value, hint, subValue, icon: Icon }: { label: string; value: string; hint?: string; subValue?: string; icon?: LucideIcon }) {
   return (
-    <div className="rounded-2xl bg-slate-800/50 p-5 shadow-sm ring-1 ring-slate-700">
+    <div className="rounded-2xl bg-slate-800/50 p-5 shadow-sm ring-1 ring-slate-700 transition-all duration-200 hover:shadow-lg hover:shadow-slate-700/30 hover:ring-slate-600">
       <div className="flex items-center gap-2 text-sm uppercase tracking-wide text-slate-400">
         {Icon ? <Icon className="h-4 w-4" /> : null}
         {label}
