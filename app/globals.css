@@ -189,6 +189,39 @@ body,
   opacity: 0;
 }
 
+/* 下拉框动画 */
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdownSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+}
+
+.animate-dropdown-in {
+  animation: dropdownSlideIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+
+.animate-dropdown-out {
+  animation: dropdownSlideOut 0.1s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
 /* View Transition 基础优化：减缓快照交叉淡入淡出，使过渡更自然 */
 ::view-transition-old(root),
 ::view-transition-new(root) {

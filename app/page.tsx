@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef, type FormEvent } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, startTransition, type FormEvent } from "react";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend, ComposedChart, PieChart, Pie, Cell } from "recharts";
 import type { TooltipProps } from "recharts";
 import { formatCurrency, formatNumber, formatCompactNumber, formatNumberWithCommas, formatHourLabel } from "@/lib/utils";
@@ -2340,8 +2340,12 @@ function ComboBox({
   onClear?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [hasTyped, setHasTyped] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  
   const filtered = useMemo(() => {
     if (!hasTyped) return options;
     return options.filter((opt) => opt.toLowerCase().includes(value.toLowerCase()));
@@ -2351,8 +2355,42 @@ function ComboBox({
     darkMode ? "border-slate-700 bg-slate-800 text-white placeholder-slate-500" : "border-slate-300 bg-white text-slate-900 placeholder-slate-400"
   }`;
 
+  const closeDropdown = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setOpen(false);
+      setIsVisible(false);
+      setIsClosing(false);
+    }, 100); // Match animation duration
+  };
+
+  useEffect(() => {
+    if (open) {
+      // Use requestAnimationFrame to ensure DOM is ready before starting animation
+      requestAnimationFrame(() => {
+        startTransition(() => {
+          setIsVisible(true);
+          setIsClosing(false);
+        });
+      });
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        closeDropdown();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <input
         ref={inputRef}
         value={value}
@@ -2364,18 +2402,19 @@ function ComboBox({
           setOpen(true);
           setHasTyped(false);
         }}
-        onBlur={() => setTimeout(() => setOpen(false), 100)}
         placeholder={placeholder}
         className={`${baseInput} pr-8`}
       />
       {value && (
         <button
           type="button"
+          onMouseDown={(e) => {
+            e.preventDefault(); // Prevent input from focusing
+          }}
           onClick={() => {
             onChange("");
             setHasTyped(false);
             onClear?.();
-            inputRef.current?.focus();
           }}
           className={`absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 transition ${
             darkMode ? "text-slate-400 hover:bg-slate-700 hover:text-slate-200" : "text-slate-500 hover:bg-slate-200 hover:text-slate-700"
@@ -2385,11 +2424,11 @@ function ComboBox({
           <X className="h-3.5 w-3.5" />
         </button>
       )}
-      {open && filtered.length > 0 ? (
+      {isVisible && filtered.length > 0 ? (
         <div
           className={`absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border shadow-lg scrollbar-slim ${
             darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
-          }`}
+          } ${isClosing ? "animate-dropdown-out" : "animate-dropdown-in"}`}
         >
           {filtered.map((opt) => (
             <button
@@ -2399,7 +2438,7 @@ function ComboBox({
                 e.preventDefault();
                 onChange(opt);
                 setHasTyped(false);
-                setOpen(false);
+                closeDropdown();
                 inputRef.current?.blur();
                 onSelectOption?.(opt);
               }}
